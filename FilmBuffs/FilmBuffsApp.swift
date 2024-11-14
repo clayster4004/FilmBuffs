@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct FilmBuffsApp: App {
+    @StateObject private var navi = MyNavigator()
     var body: some Scene {
         WindowGroup {
             MainTabView()
+                .environmentObject(navi)
         }
     }
 }
