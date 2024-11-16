@@ -38,6 +38,11 @@ struct MainTabView: View {
                         Image(systemName: "gearshape.fill")
                         Text("Settings")
                     }
+                ContentView()
+                    .tabItem {
+                        Image(systemName: "magnifyingglass")
+                        Text("Test API")
+                    }
             }
             .navigationDestination(for: Destination.self) { d in
                 switch d {
