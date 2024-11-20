@@ -46,10 +46,12 @@ struct MainTabView: View {
             }
             .navigationDestination(for: Destination.self) { d in
                 switch d {
-                case .AboutMovie:
-                    AboutMovieView()
-                case .AboutActor:
-                    AboutActorView()
+                case .AboutMovie(let id):
+                    AboutMovieView(movieId: id)
+                case .AboutActor(let id):
+                    AboutActorView(actorId: id)
+                case .AboutTvShow(let id):
+                    AboutTvShowView(tvShowId: id)
                 }
             }
         }

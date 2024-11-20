@@ -7,9 +7,10 @@
 
 import SwiftUI
 
-enum Destination {
-    case AboutMovie
-    case AboutActor
+enum Destination: Hashable {
+    case AboutMovie(Int)
+    case AboutActor(Int)
+    case AboutTvShow(Int)
 }
 
 class MyNavigator: ObservableObject {
