@@ -10,6 +10,7 @@ import UIKit
 
 // Protocol for UIKit
 struct ImagePicker: UIViewControllerRepresentable {
+    // This is needed to dismiss the camera view post picture taken
     @Environment(\.presentationMode) var presentationMode
 
     // Defines that it will be opening camera
@@ -21,15 +22,15 @@ struct ImagePicker: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIImagePickerController {
         // Initializes a new UIImagePickerController
         let picker = UIImagePickerController()
-        // Sets the pickers source type to camera and deligator to handle events
+        // Sets the pickers source type to camera as opposed to photo lib and deligator to handle events
         picker.sourceType = self.sourceType
         picker.delegate = context.coordinator
         return picker
     }
 
-    /// This function will be used to update the view if need be
+    /// This function will be used to update the view if need be *unused*
     func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
-        // TODO: Maybe later
+        // TODO: Needed to conform to protocol
     }
 
     /// Coordinator needed to handle events like image selection and cancellation

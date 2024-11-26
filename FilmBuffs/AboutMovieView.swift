@@ -5,31 +5,22 @@
 //  Created by Clay Beal on 11/14/24.
 //
 
-//import SwiftUI
-//
-//struct AboutMovieView: View {
-//    let movieId: Int
-//    @EnvironmentObject var navi: MyNavigator
-//    var body: some View {
-//        VStack {
-//            Text("About Movie View")
-//            HStack {
-//                Button("Go Back") {
-//                    navi.navBack()
-//                }
-//            }
-//        }
-//    }
-//}
-
 import SwiftUI
+
+// Has the needed information for movies
+struct MovieDetails: Codable {
+    let title: String
+    let overview: String?
+}
 
 struct AboutMovieView: View {
     let movieId: Int  // Pass the movie ID
-    @State private var movieDetails: MovieDetails?  // Model for movie details
+    // Model for movie details
+    @State private var movieDetails: MovieDetails?
 
     var body: some View {
         VStack {
+            // Title at the top
             if let details = movieDetails {
                 Text(details.title)
                     .font(.largeTitle)
@@ -40,6 +31,7 @@ struct AboutMovieView: View {
                 ProgressView("Loading movie details...")
             }
         }
+        // Get the movie details when the page appears
         .onAppear {
             fetchMovieDetails(movieId: movieId)
         }
@@ -60,7 +52,3 @@ struct AboutMovieView: View {
     }
 }
 
-struct MovieDetails: Codable {
-    let title: String
-    let overview: String?
-}
