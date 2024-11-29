@@ -1214,7 +1214,7 @@ Since this tutorial is based on the CreateML/CoreML functionality I am going to 
 
 That being said I will do a brief overview of how I implemented this model into my source code, with those stated functionalities
 
-***Creating a view for the camera***
+***Creating a view for the camera***  
 In this section I am going to do a quick overview of how I set up my CameraView.swift file
 
 To start I created the file and added the navigator as an EnvironmentObject and the CameraViewModel as a ObservedObject (created later in the tutoiral)
@@ -1297,7 +1297,7 @@ I created a file ImagePicker.swift that is necessary to specifically bringing up
    }
 ```
 
-***Creating ImagePicker.swift***
+***Creating ImagePicker.swift***  
 ImagePicker.swift is necessary to allow the user to capture images in a SwiftUI app. SwiftUI does not natively support image picking so this file acts as a bridge between SwiftUI and the UIKit framework.
 
 presentationMode is the variable used to manage whether the UIImagePickerController is shown or not. The source type defines that we are using the camera functionality. The completion handler is a closure that handles the captured image by the user. 
@@ -1370,7 +1370,7 @@ The imagePickerController function handles where the user selects the image and 
 }
 ```
 
-***Creating CameraViewModel.swift***
+***Creating CameraViewModel.swift***  
 The CameraViewModel holds the meat of the logic in using our model!
 
 This snippet has code that handles the image that the user captures, ensures it is sitting in portriat mode (as opposed to landscape), and crops just the face from the image. Additionally, this function calls the recognition function where we will be using our model against the captured image.
@@ -1630,7 +1630,7 @@ extension UIImage {
 }
 ```
 
-vi. **Congratulations!**
+vi. **Congratulations!**  
 If you stuck-it-out to the end of the tutorial I'm glad! Feel free to mess around with my application and send me improvements, I'd love to see them!
 
 
