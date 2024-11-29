@@ -1191,6 +1191,7 @@ iii. **Getting Started with Create ML**
 If you've done everything correctly your screen should look something like this
 <img width="1383" alt="YouDidIt" src="https://github.com/user-attachments/assets/7933c3a6-37f0-49bf-8a64-dd74a6969f68">
 
+---
 
 iv. **Training your data**
 
@@ -1207,6 +1208,7 @@ Save this file to the project you want to use the model in.
 
 Congratulations you just trained a model!
 
+---
 
 v. **Using your model**
 
@@ -1629,6 +1631,8 @@ extension UIImage {
     }
 }
 ```
+
+---
 
 vi. **Congratulations!**  
 If you stuck-it-out to the end of the tutorial I'm glad! Feel free to mess around with my application and send me improvements, I'd love to see them!
