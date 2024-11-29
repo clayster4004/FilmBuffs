@@ -1197,6 +1197,452 @@ iv. **Training your data**
 Thankfully training data has never been easier. Start by selecting the data Folder "CelebImages" that was generated via the above python script
 <img width="1381" alt="Select" src="https://github.com/user-attachments/assets/c5996b85-c4cc-4153-9ddb-3d59a9cc583f">
 
+Select the number of iterations (for my project I did 25 iterations). Click the "train" button in the top left corner of the screen.
+<img width="1382" alt="Train" src="https://github.com/user-attachments/assets/5f5640ac-b48d-461d-b14f-9eabdf54c3a2">
+
+Once the data is done training save the mlmodel file to your machine. This involves navigating to the output tab and selecting the "Get" button
+<img width="1366" alt="Screenshot 2024-11-29 at 2 07 42 PM (2)" src="https://github.com/user-attachments/assets/df61adac-0244-44e3-96d5-61bcf57dda48">
+
+Save this file to the project you want to use the model in.
+
+Congratulations you just trained a model!
+
+
+v. **Using your model**
+
+Since this tutorial is based on the CreateML/CoreML functionality I am going to go forward assuming that you have either forked my repository or have an application of your own that you want to implement this type of model into. In essence I am going to give code examples and explain how I added this model into my prexisting application that already has the view and viewmodel functionality implemented to take photos from your application.
+
+That being said I will do a brief overview of how I implemented this model into my source code, with those stated functionalities
+
+***Creating a view for the camera***
+In this section I am going to do a quick overview of how I set up my CameraView.swift file
+
+To start I created the file and added the navigator as an EnvironmentObject and the CameraViewModel as a ObservedObject (created later in the tutoiral)
+The CameraViewModel will hold the logic for handling the camera, cropping faces, and running the CoreML model
+```swift
+import SwiftUI
+
+struct CameraView: View {
+    // Observes the viewModel which contains the logic
+    @ObservedObject var viewModel: CameraViewModel
+    // Accept the navigator as an environment object; can be used here
+    @EnvironmentObject var navi: MyNavigator
+```
+
+Next I created a basic body for the view with a button to open up the camera on your device. This button triggers the isShowingCamera flag in the viewModel; enabling the camera interface
+```swift
+   var body: some View {
+        VStack {
+            // Singular open camera button on the page
+            Button("Open Camera") {
+                viewModel.isShowingCamera = true // Sets the "show camera" flag
+            }
+            .padding()
+```
+
+This section will display the captured image on the screen upon successfully taking a photo.
+```swift
+               // This view displays the captured picture *if available*
+               if let image = viewModel.capturedImage {
+                   Image(uiImage: image)
+                       .resizable()
+                       .scaledToFit()
+                       .frame(width: 200, height: 200)
+               }
+```
+
+Since the model was trained on just the cropped faces, the viewModel will need to have the functionality to crop the picture taken to just include the face
+```swift
+               // Display the cropped face image *if available*
+               if let croppedFace = viewModel.croppedFaceImage {
+                   Text("Detected Face:")
+                       .padding(.top)
+                   Image(uiImage: croppedFace) // Shows the cropped face in a smaller window
+                       .resizable()
+                       .scaledToFit()
+                       .frame(width: 150, height: 150)
+                       .padding()
+               } else {
+                   if viewModel.capturedImage != nil {
+                       Text("No face detected or still processing...")
+                           .foregroundColor(.gray)
+                           .padding(.top)
+                   }
+               }
+
+           }
+```
+
+I created a file ImagePicker.swift that is necessary to specifically bringing up the camera, additionally after the viewModel tries to detect the face we need a prompt to appear with that result
+```swift
+            // This is needed to actually display the camera when the flag is set to true
+           .sheet(isPresented: $viewModel.isShowingCamera) {
+               // ImagePicker is used to displaying the camera
+               ImagePicker(sourceType: .camera) { image in
+                   viewModel.handleCapturedImage(image)
+               }
+           }
+           // When the picture is taken and available an alert will pop up running the facial detection.
+           .alert(isPresented: $viewModel.showConfirmationAlert) {
+               Alert(
+                   title: Text("Is this \(viewModel.identifiedPersonName ?? "the person")?"),
+                   primaryButton: .default(Text("Yes")) {
+                       // If the person is correct the page will navigate and search for their information to display
+                       viewModel.performManualSearch(navi: navi)
+                   },
+                   secondaryButton: .cancel(Text("No"))
+               )
+           }
+       }
+   }
+```
+
+***Creating ImagePicker.swift***
+ImagePicker.swift is necessary to allow the user to capture images in a SwiftUI app. SwiftUI does not natively support image picking so this file acts as a bridge between SwiftUI and the UIKit framework.
+
+presentationMode is the variable used to manage whether the UIImagePickerController is shown or not. The source type defines that we are using the camera functionality. The completion handler is a closure that handles the captured image by the user. 
+```swift
+import SwiftUI
+import UIKit
+
+// Protocol for UIKit
+struct ImagePicker: UIViewControllerRepresentable {
+    // This is needed to dismiss the camera view post picture taken
+    @Environment(\.presentationMode) var presentationMode
+
+    // Defines that it will be opening camera
+    var sourceType: UIImagePickerController.SourceType = .camera
+    // Allows that picture taken to be accessed
+    var completionHandler: (UIImage) -> Void
+```
+
+This creates the instance of UIImagePickerController, ensures it's source is the camera, and defines the coordinator as the delegate to handler the picker events like image selection. The makeCoordinator function creates the coordinator instance the handle events for the UIImagePickerController
+```swift
+/// Configures UI image picker controller
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        // Initializes a new UIImagePickerController
+        let picker = UIImagePickerController()
+        // Sets the pickers source type to camera as opposed to photo lib and deligator to handle events
+        picker.sourceType = self.sourceType
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    /// This function will be used to update the view if need be *unused*
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
+        // TODO: Needed to conform to protocol
+    }
+
+    /// Coordinator needed to handle events like image selection and cancellation
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+```
+
+This coordinator is essentially used to connect the UIKit elements back to SwiftUI. It references the ImagePicker instance that created this coordinator.
+The imagePickerController function handles where the user selects the image and sends it back to the UI. Additionlly, the imagePickerControllerDidCancel function holds the functionality that allows the user the cancel the picker.
+```swift
+/// Coordinator class to handle UIImagePickerControllerDelegate methods
+    class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        // Reference to ImagePicker instance
+        let parent: ImagePicker
+
+        init(_ picker: ImagePicker) {
+            self.parent = picker
+        }
+
+        /// Handle the selected image
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            // Extracts the selected image
+            if let uiImage = info[.originalImage] as? UIImage {
+                // Sends image back to SwiftUI
+                parent.completionHandler(uiImage)
+            }
+            // Returns user to previous screen
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+
+        // Handle cancellation if user backs out
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+    }
+}
+```
+
+***Creating CameraViewModel.swift***
+The CameraViewModel holds the meat of the logic in using our model!
+
+This snippet has code that handles the image that the user captures, ensures it is sitting in portriat mode (as opposed to landscape), and crops just the face from the image. Additionally, this function calls the recognition function where we will be using our model against the captured image.
+```swift
+import SwiftUI
+import Vision
+import UIKit
+import CoreML
+
+class CameraViewModel: ObservableObject {
+    @Published var isShowingCamera = false             // Boolean for if the camera is showing
+    @Published var capturedImage: UIImage? = nil       // Holds captured image
+    @Published var croppedFaceImage: UIImage? = nil    // To hold the cropped face
+    @Published var identifiedPersonName: String? = nil // Used to hold identity
+    @Published var showConfirmationAlert = false       // Controls whether to show the confirmation alert
+
+    // Function to handle the captured image
+    func handleCapturedImage(_ image: UIImage) {
+        let fixedImage = image.fixedOrientation()  // Ensures vertical image
+        self.capturedImage = fixedImage
+        // If there is a face in the image crop it to just see that face
+        detectAndCropFace(from: fixedImage) { croppedImage in
+            DispatchQueue.main.async {
+                if let croppedImage = croppedImage {
+                    self.croppedFaceImage = croppedImage.fixedOrientation()  // Ensures vertical image
+                    self.performRecognition(on: croppedImage) // Try to identify the person
+                } else {
+                    self.croppedFaceImage = nil
+                }
+            }
+        }
+    }
+```
+
+This snippet of code is where you are using the MLModel you trained. First of all it resizes the image to the same size image as the training data. Then you defined the model using CoreML. It is important to note this name I am using is what I named my model in CreateML. Additionally, this model is in my project in a folder called "Models". You need to then convert the image into a "pixelBuffer" to be able to use the model for recognition. Finally, you make a prediction and set the confimation flag so your UI knows to display the prediction.
+```swift
+/// Core ML usage to try to idetifity the person in the image based on a trained model
+    private func performRecognition(on image: UIImage) {
+        // Resize the image to best match my training data
+        guard let resizedImage = image.resized(to: CGSize(width: 256, height: 256)) else {
+            print("Failed to resize image")
+            return
+        }
+        
+        // Define the model I am using
+        guard let model = try? FacialDetectionv1_0(configuration: MLModelConfiguration()) else {
+            print("Failed to load model")
+            return
+        }
+        
+        // This is required for Core ML model inputs
+        guard let pixelBuffer = resizedImage.toCVPixelBuffer() else {
+            print("Failed to convert UIImage to CVPixel Buffer")
+            return
+        }
+        
+        // This code may run an error
+        do {
+            // Insert the pixel buffer into the model to try and make a perdiction
+            let prediction = try model.prediction(image: pixelBuffer)
+            // Set the identified person as the output of the model
+            self.identifiedPersonName = prediction.target
+            self.showConfirmationAlert = true
+        } catch {
+            print("Error making prediction: \(error.localizedDescription)")
+        }
+    }
+```
+
+This section is for use in my demo application, but it essentially uses the name to make a database call to then display information about the identified celebrity.
+```swift
+/// Manually initiate search based on identified person name
+    func performManualSearch(navi: MyNavigator) {
+        // Take the persons name, like "Adam_Sandler" and take out the "_"
+        if let name = identifiedPersonName {
+            let formattedName = name.replacingOccurrences(of: "_", with: " ")
+            
+            // Search for their information via the API
+            NetworkManager.shared.searchMoviesAndActors(query: formattedName) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    // If they are found navigate to their view; Success!
+                    case .success(let results):
+                        if let matchedActor = results.first(where: { $0.mediaType == "person" && $0.name == formattedName }) {
+                            navi.navigate(to: .AboutActor(matchedActor.id))
+                        } else {
+                            print("Could not find actor details for \(formattedName)")
+                        }
+                    case .failure(let error):
+                        print("Error searching for actor: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+    }
+
+```
+
+To finish out this tutorial I will include the cropping functions I used to ensure the captured photo is similar to the training data used.
+```swift
+// Function to detect and crop face using Vision framework
+    private func detectAndCropFace(from image: UIImage, completion: @escaping (UIImage?) -> Void) {
+        // Built in swift function to detect faces in photos
+        let faceDetectionRequest = VNDetectFaceRectanglesRequest { (request, error) in
+            if let error = error {
+                print("Face detection error: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            // Uses the first detected face
+            guard let results = request.results as? [VNFaceObservation], let faceObservation = results.first else {
+                print("No faces detected.")
+                completion(nil)
+                return
+            }
+            
+            // Crop the face from the image
+            let boundingBox = faceObservation.boundingBox
+            let croppedImage = self.cropImage(image, to: boundingBox)
+            completion(croppedImage)
+        }
+        
+        // Convert UIImage to CGImage (so the framework can work with the image)
+        guard let cgImage = image.cgImage else {
+            print("Unable to convert UIImage to CGImage.")
+            completion(nil)
+            return
+        }
+        
+        // Perform face detection request
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        do {
+            // Call the handler with the detected face for processing
+            try handler.perform([faceDetectionRequest])
+        } catch {
+            print("Failed to perform face detection: \(error.localizedDescription)")
+            completion(nil)
+        }
+    }
+    
+    /// Function used to crop the face to match the models data
+    private func cropImage(_ image: UIImage, to boundingBox: CGRect) -> UIImage? {
+        // Set enlargement factors for different sides
+        let topEnlargementFactor: CGFloat = 0.25  // More focus on adding to the top of the head
+        let overallEnlargementFactor: CGFloat = 0.2  // General enlargement for sides and bottom
+
+        // Original bounding box properties
+        let originalWidth = image.size.width * boundingBox.width
+        let originalHeight = image.size.height * boundingBox.height
+        let originalX = image.size.width * boundingBox.origin.x
+        let originalY = image.size.height * (1 - boundingBox.origin.y) - originalHeight
+
+        // Calculate the new enlarged width and height (so we can "blow up" the photo)
+        let newWidth = originalWidth * (1 + overallEnlargementFactor)
+        let newHeight = originalHeight * (1 + overallEnlargementFactor + topEnlargementFactor)
+
+        // Adjust X and Y coordinates to center the enlargement
+        let newX = originalX - ((newWidth - originalWidth) / 2)
+        let newY = originalY - (originalHeight * topEnlargementFactor / 2) - ((newHeight - originalHeight) / 2)
+
+        // Ensure the cropping rectangle stays within the bounds of the original image
+        let cropRect = CGRect(
+            x: max(0, newX),
+            y: max(0, newY),
+            width: min(image.size.width - newX, newWidth),
+            height: min(image.size.height - newY, newHeight)
+        )
+
+        // Crop the image
+        guard let cgImage = image.cgImage?.cropping(to: cropRect) else {
+            print("Failed to crop image.")
+            return nil
+        }
+
+        return UIImage(cgImage: cgImage)
+    }
+}
+```
+
+This extension resizes the image to a specific size as well as fixing the orientation to make sure it is always upright and converting the image to a CVPixelBuffer to work with our model.
+```swift
+extension UIImage {
+    // Resize the image to the target size
+    func resized(to size: CGSize) -> UIImage? {
+        // New image context with specific size
+        UIGraphicsBeginImageContextWithOptions(size, false, 1.0)
+        // Draw the image into the new context scaling it to fit
+        self.draw(in: CGRect(origin: .zero, size: size))
+        // Define the resized imaged and close
+        let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return resizedImage
+    }
+
+    /// Adjust image orientation
+    func fixedOrientation() -> UIImage {
+        if imageOrientation == .up {
+            return self
+        }
+        // Reorients the image to be vertical
+        UIGraphicsBeginImageContextWithOptions(size, false, scale)
+        draw(in: CGRect(origin: .zero, size: size))
+        let normalizedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+
+        return normalizedImage ?? self
+    }
+    
+    /// Converts UIImage to CVPixelBuffer so it works with Core ML models
+    func toCVPixelBuffer() -> CVPixelBuffer? {
+        // Define width and height of the image in pixels
+        let width = Int(size.width)
+        let height = Int(size.height)
+        
+        // Specify compatibility attributes for the pixel buffer
+        let attrs = [
+            kCVPixelBufferCGImageCompatibilityKey: kCFBooleanTrue,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: kCFBooleanTrue
+        ] as CFDictionary
+        
+        // This will hold the image data
+        var pixelBuffer: CVPixelBuffer?
+        let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height,
+                                         kCVPixelFormatType_32ARGB, attrs,
+                                         &pixelBuffer)
+        // Ensure successful creation of the pixel buffer
+        guard status == kCVReturnSuccess, let unwrappedBuffer = pixelBuffer else {
+            return nil
+        }
+
+        // Lock it for writing
+        CVPixelBufferLockBaseAddress(unwrappedBuffer, .readOnly)
+        // Get a pointer to the pixel buffer's base address
+        let data = CVPixelBufferGetBaseAddress(unwrappedBuffer)
+
+        // Set up a Core Graphics context using the pixel buffer's memory
+        let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
+        let context = CGContext(data: data,
+                                width: width,
+                                height: height,
+                                bitsPerComponent: 8,
+                                bytesPerRow: CVPixelBufferGetBytesPerRow(unwrappedBuffer),
+                                space: rgbColorSpace,
+                                bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue)
+        
+        // Get the CGImage representation of the current UIImage
+        guard let cgImage = self.cgImage else {
+            return nil
+        }
+        // Draw the CGImage into the Core Graphics context
+        context?.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        // Unlock the pixel buffer memory
+        CVPixelBufferUnlockBaseAddress(unwrappedBuffer, .readOnly)
+
+        return unwrappedBuffer
+    }
+}
+```
+
+vi. **Congratulations!**
+If you stuck-it-out to the end of the tutorial I'm glad! Feel free to mess around with my application and send me improvements, I'd love to see them!
+
+
+
+
+
+
+
+
+
+
+
 
 
 
