@@ -1,0 +1,27 @@
+.collapsible {
+  cursor: pointer;
+  padding: 10px;
+  border: 1px solid #ddd;
+  background-color: #f1f1f1;
+  text-align: left;
+  outline: none;
+  font-size: 16px;
+}
+
+.collapsible:after {
+  content: '▼';
+  font-size: 12px;
+  float: right;
+}
+
+.collapsible.active:after {
+  content: '▲';
+}
+
+.content {
+  display: none;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid #ddd;
+  background-color: #fff;
+}
