@@ -1,4 +1,3 @@
-<link rel="stylesheet" href="styles.css">
 # CoreML Tutorial
 
 Hey, thanks for joining! To give a quick introduction, I am going to assume you have a baseline knowledge of Swift, so this tutorial is not going to go over syntactical analysis by any means. This tutorial will be more focused on how to:
