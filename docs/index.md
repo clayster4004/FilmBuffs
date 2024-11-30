@@ -1090,6 +1090,21 @@ print("Parquet file successfully converted to CSV.")
 ```
 </details>
 
+<button class="collapsible">Click to expand Python Code</button>
+<div class="content">
+<pre>
+import pandas as pd
+
+# Read the Parquet file
+df = pd.read_parquet('train-00000-of-00001.parquet')
+
+# Save it as a CSV file
+df.to_csv('celebrity-1000.csv', index=False)
+
+print("Parquet file successfully converted to CSV.")
+</pre>
+</div>
+
 ### Organizing Images:
 Another script for organizing images into folders based on their labels:
 <details>
