@@ -1076,7 +1076,7 @@ configs:
 
 <details>
 <summary>Click to expand Python Code</summary>
-   
+
 ```python
 import pandas as pd
 
@@ -1088,7 +1088,6 @@ df.to_csv('celebrity-1000.csv', index=False)
 
 print("Parquet file successfully converted to CSV.")
 ```
-
 </details>
 
 ### Organizing Images:
