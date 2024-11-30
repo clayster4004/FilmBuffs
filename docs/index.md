@@ -48,8 +48,6 @@ This dataset is small enough to quickly train yet large enough to have some work
 ii. **Converting the Data into a CreateML-Readable Structure**
 
 This YAML metadata describes the dataset structure:
-<details>
-<summary>Click to expand YAML</summary>
 
 ```yaml
 dataset_info:
@@ -1070,12 +1068,7 @@ configs:
         path: data/train-*
 ```   
 
-</details>
-
 ### Saving Data from parquet to csv
-
-<details>
-<summary>Click to expand Python Code</summary>
 
 ```python
 import pandas as pd
@@ -1088,27 +1081,9 @@ df.to_csv('celebrity-1000.csv', index=False)
 
 print("Parquet file successfully converted to CSV.")
 ```
-</details>
-
-<button class="collapsible">Click to expand Python Code</button>
-<div class="content">
-<pre>
-import pandas as pd
-
-# Read the Parquet file
-df = pd.read_parquet('train-00000-of-00001.parquet')
-
-# Save it as a CSV file
-df.to_csv('celebrity-1000.csv', index=False)
-
-print("Parquet file successfully converted to CSV.")
-</pre>
-</div>
 
 ### Organizing Images:
 Another script for organizing images into folders based on their labels:
-<details>
-<summary>Click to expand Python Code</summary>
    
 ```python
 import yaml
@@ -1184,8 +1159,6 @@ for idx, row in tqdm(df.iterrows(), total=len(df)):
 
 print("Images saved successfully.")
 ```
-
-</details>
 
 By the end of this, you should have a folder labeled **"CelebImages"** with subfolders containing the pictures.
 
